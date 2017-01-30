@@ -4,7 +4,7 @@ open Printf
 open OUnit2
 open Pretty
 open Types
-       
+
 let is_osx = Conf.make_bool "osx" false "Set this flag to run on osx";;
 
 let t name program expected = name>::test_run program name expected;;
@@ -32,22 +32,22 @@ let suite =
        forty_one_a;
 
   tanf "prim1_anf"
-       (EPrim1(Sub1, ENumber(55, ()), ()))
+       (EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))
        (ELet(["unary_1", EPrim1(Sub1, ENumber(55, ()), ()), ()],
              EId("unary_1", ()),
              ()));
 
-  ta "forty_one_run_anf" (tag forty_one_a) "41";
- 
-  t "forty_one" forty_one "41";
+  (*ta "forty_one_run_anf" (tag forty_one_a) "41";*)
+
+  (*t "forty_one" forty_one "41";*)
 
 
-  t "test" test_prog "3";
-      
-    (* Some useful if tests to start you off *)
+  (*t "test" test_prog "3";*)
 
-  t "if1" "if 5: 4 else: 2" "4";
-  t "if2" "if 0: 4 else: 2" "2";
+    (*(* Some useful if tests to start you off *)*)
+
+  (*t "if1" "if 5: 4 else: 2" "4";*)
+  (*t "if2" "if 0: 4 else: 2" "2";*)
 
   ]
 ;;

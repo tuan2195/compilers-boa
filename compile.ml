@@ -59,7 +59,6 @@ let tag (e : 'a expr) : tag expr =
             (ENumber(x, t), t+1)
         | EId (x, _) ->
             (EId(x, t), t+1)
-        | _ -> failwith "Implement this"
     in let (newExp, _) = tagger e 0 in newExp
 ;;
 
@@ -80,8 +79,87 @@ let rec untag (e : 'a expr) : unit expr =
 
 (* PROBLEM 3 & 4 *)
 (* This function converts a tagged expression into an untagged expression in A-normal form *)
+let gensym (e : tag expr) : string =
+    match e with
+    | EId(_, t) ->
+        sprintf "Id_%d" t
+    | ENumber(_, t) ->
+        sprintf "Num_%d" t
+    | EPrim1(_, _, t) ->
+        sprintf "Prim1_%d" t
+    | EPrim2(_, _, _, t) ->
+        sprintf "Prim2_%d" t
+    | ELet(_, _, t) ->
+        sprintf "Let_%d" t
+    | EIf(_, _, _, t) ->
+        sprintf "If_%d" t
+
 let anf (e : tag expr) : unit expr =
-  failwith "Implement this"
+    let rec help (e : tag expr) : (unit expr * (string * unit expr) list) =
+        let rec helpBinds (ls : 'a bind list) : ((string * unit expr) list) =
+            match ls with
+            | [] -> []
+            | bind::rest ->
+                let (_, exp, tag) = bind in
+                let (ans, ctx) = help exp in
+                let name = gensym exp in
+                ((name, ans)::ctx)@helpBinds rest
+        in match e with
+        | EId(x, _) ->
+            (EId(x, ()), [])
+        | ENumber(x, _) ->
+            (ENumber(x, ()), [])
+        | EPrim1(op, e, _) ->
+            let (ans, ctx) = help e in
+            let name = gensym e in
+            (EId(name, ()), ctx@[(name, EPrim1(op, ans, ()))])
+        | EPrim2(op, e1, e2, _) ->
+            let (ans1, ctx1) = help e1 in
+            let (ans2, ctx2) = help e2 in
+            let name = gensym e in
+            (EId(name, ()), ctx1@ctx2@[(name, EPrim2(op, ans1, ans2, ()))])
+        | ELet(binds, exp, _) ->
+            let bindsCtx = helpBinds binds in
+            let (expAns, expCtx) = help exp in
+            let name = gensym e in
+            (EId(name, ()), bindsCtx@expCtx@[(name, expAns)])
+            (*(expAns, bindsCtx@expCtx)*)
+        | EIf(cond, thn, els, _) ->
+            let (ansCond, ctxCond) = help cond in
+            let (ansThen, ctxThen) = help thn in
+            let (ansElse, ctxElse) = help els in
+            let name = gensym e in
+            (EId(name, ()), ctxCond@ctxThen@ctxElse@[(name, EIf(ansCond, ansThen, ansElse, ()))])
+    in if is_anf e
+        then untag e
+    else
+        let (ans, ctx) = help e in
+        let binds = List.map(fun (str, expr) -> (str, expr, ())) ctx in
+        ELet(binds, ans, ())
+    (*else match e with*)
+        (*| EId(x, _) ->*)
+            (*EId(x, ())*)
+        (*| ENumber(x, _) ->*)
+            (*ENumber(x, ())*)
+        (*| EPrim1(op, e, _) ->*)
+            (*let (ans, ctx) = help e in*)
+            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) ctx in*)
+            (*ELet(binds, EPrim1(op, ans, ()), ())*)
+        (*| EPrim2(op, e1, e2, _) ->*)
+            (*let (ans1, ctx1) = help e1 in*)
+            (*let (ans2, ctx2) = help e2 in*)
+            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) (ctx1@ctx2) in*)
+            (*ELet(binds, EPrim2(op, ans1, ans2, ()), ())*)
+        (*| ELet(_, _, _) ->*)
+            (*let (ans, ctx) = help e in*)
+            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) ctx in*)
+            (*ELet(binds, ans, ())*)
+        (*| EIf(cond, thn, els, _) ->*)
+            (*let (ansCond, ctxCond) = help cond in*)
+            (*let (ansThen, ctxThen) = help thn in*)
+            (*let (ansElse, ctxElse) = help els in*)
+            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) (ctxCond@ctxThen@ctxElse) in*)
+            (*ELet(binds, EIf(ansCond, ansThen, ansElse, ()), ())*)
 ;;
 
 
