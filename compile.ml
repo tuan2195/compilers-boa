@@ -174,7 +174,6 @@ let i_to_asm (i : instruction) : string =
      sprintf "  jmp %s" label
   | IRet ->
      "  ret"
-  | _ -> failwith "Implement this instruction"
 
 let to_asm (is : instruction list) : string =
   List.fold_left (fun s i -> sprintf "%s\n%s" s (i_to_asm i)) "" is
