@@ -44,7 +44,6 @@ let tag (e : 'a expr) : tag expr =
                 let (str, bindsExp, _) = b in
                 let (newBindsExp, nextTag) = tagger bindsExp t in
                 let newBinds = (str, newBindsExp, nextTag) in
-                (* not so sure about this increment *)
                 let (newRestBindsLs, nextTagRec) = bindsTagger rest (nextTag+1) in
                 (newBinds::newRestBindsLs, nextTagRec)
         in match e with
@@ -68,7 +67,6 @@ let tag (e : 'a expr) : tag expr =
             (ENumber(x, t), t+1)
         | EId (x, _) ->
             (EId(x, t), t+1)
-        | _ -> failwith "Implement this"
     in let (newExp, _) = tagger e 0 in newExp
 ;;
 
@@ -89,8 +87,61 @@ let rec untag (e : 'a expr) : unit expr =
 
 (* PROBLEM 3 & 4 *)
 (* This function converts a tagged expression into an untagged expression in A-normal form *)
+let gensym (e : tag expr) : string =
+    match e with
+    | EId(_, t) ->
+        sprintf "Id_%d" t
+    | ENumber(_, t) ->
+        sprintf "Num_%d" t
+    | EPrim1(_, _, t) ->
+        sprintf "Prim1_%d" t
+    | EPrim2(_, _, _, t) ->
+        sprintf "Prim2_%d" t
+    | ELet(_, _, t) ->
+        sprintf "Let_%d" t
+    | EIf(_, _, _, t) ->
+        sprintf "If_%d" t
+
 let anf (e : tag expr) : unit expr =
-  failwith "Implement this"
+    let rec help (e : tag expr) : (unit expr * (string * unit expr) list) =
+        let rec helpBinds (ls : 'a bind list) : ((string * unit expr) list) =
+            match ls with
+            | [] -> []
+            | bind::rest ->
+                let (_, exp, tag) = bind in
+                let (ans, ctx) = help exp in
+                let name = gensym exp in
+                ((name, ans)::ctx)@helpBinds rest
+        in match e with
+        | EId(x, _) ->
+            (EId(x, ()), [])
+        | ENumber(x, _) ->
+            (ENumber(x, ()), [])
+        | EPrim1(op, e, _) ->
+            let (ans, ctx) = help e in
+            let name = gensym e in
+            (EId(name, ()), ctx@[(name, EPrim1(op, ans, ()))])
+        | EPrim2(op, e1, e2, _) ->
+            let (ans1, ctx1) = help e1 in
+            let (ans2, ctx2) = help e2 in
+            let name = gensym e in
+            (EId(name, ()), ctx1@ctx2@[(name, EPrim2(op, ans1, ans2, ()))])
+        | ELet(binds, exp, _) ->
+            let bindsCtx = helpBinds binds in
+            let (expAns, expCtx) = help exp in
+            let name = gensym e in
+            (EId(name, ()), bindsCtx@expCtx@[(name, expAns)])
+        | EIf(cond, thn, els, _) ->
+            let (ansCond, ctxCond) = help cond in
+            let (ansThen, ctxThen) = help thn in
+            let (ansElse, ctxElse) = help els in
+            let name = gensym e in
+            (EId(name, ()), ctxCond@ctxThen@ctxElse@[(name, EIf(ansCond, ansThen, ansElse, ()))])
+    in if is_anf e
+        then untag e
+    else
+        let (ans, ctx) = help e in
+        ELet(List.map(fun (str, expr) -> (str, expr, ())) ctx, ans, ())
 ;;
 
 
@@ -109,16 +160,29 @@ let arg_to_asm (a : arg) : string =
        sprintf "[%s+%d]" (r_to_asm r) (word_size * n)
      else
        sprintf "[%s-%d]" (r_to_asm r) (-1 * word_size * n)
-
 let i_to_asm (i : instruction) : string =
   match i with
   | IMov(dest, value) ->
      sprintf "  mov %s, %s" (arg_to_asm dest) (arg_to_asm value)
-  | IAdd(dest, to_add) ->
-     sprintf "  add %s, %s" (arg_to_asm dest) (arg_to_asm to_add)
+  | IAdd(dest, arg) ->
+     sprintf "  add %s, %s" (arg_to_asm dest) (arg_to_asm arg)
+  | ISub(dest, arg) ->
+     sprintf "  sub %s, %s" (arg_to_asm dest) (arg_to_asm arg)
+  | IMul(dest, arg) ->
+     sprintf "  mul %s, %s" (arg_to_asm dest) (arg_to_asm arg)
+  | ILabel(label) ->
+     sprintf "%s:" label
+  | ICmp(arg1, arg2) ->
+     sprintf "  cmp %s, %s" (arg_to_asm arg1) (arg_to_asm arg2)
+  | IJne(label) ->
+     sprintf "  jne %s" label
+  | IJe(label) ->
+     sprintf "  je %s" label
+  | IJmp(label) ->
+     sprintf "  jmp %s" label
   | IRet ->
      "  ret"
-  | _ -> failwith "Implement this"
+  | _ -> failwith "Implement this instruction"
 
 let to_asm (is : instruction list) : string =
   List.fold_left (fun s i -> sprintf "%s\n%s" s (i_to_asm i)) "" is
@@ -140,22 +204,49 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
   | EPrim1(op, e, _) ->
      let e_reg = compile_imm e env in
      begin match op with
-     | Add1 -> [
-         IMov(Reg(EAX), e_reg);
-         IAdd(Reg(EAX), Const(1))
-       ]
-     | Sub1 -> [
-         IMov(Reg(EAX), e_reg);
-         IAdd(Reg(EAX), Const(~-1))
-       ]
+     | Add1 ->
+       [ IMov(Reg(EAX), e_reg);
+         IAdd(Reg(EAX), Const(1)) ]
+     | Sub1 ->
+       [ IMov(Reg(EAX), e_reg);
+         IAdd(Reg(EAX), Const(~-1)) ]
      end
   | EPrim2(op, left, right, _) ->
-     failwith "Implement this"
+     let regLeft = compile_imm left env in
+     let regRight = compile_imm right env in
+     begin match op with
+     | Plus ->
+       [ IMov(Reg(EAX), regLeft);
+         IAdd(Reg(EAX), regRight); ]
+     | Minus ->
+       [ IMov(Reg(EAX), regLeft);
+         ISub(Reg(EAX), regRight); ]
+     | Times ->
+       [ IMov(Reg(EAX), regLeft);
+         IMul(Reg(EAX), regRight); ]
+     end
   | EIf(cond, thn, els, tag) ->
-     failwith "Implement this"
-  | ELet([id, e, _], body, _) ->
-     failwith "Implement this"
-  | _ -> failwith "Impossible: Not in ANF"
+     let labelElse = sprintf "if_false_%d" tag in
+     let labelDone = sprintf "done_%d" tag in
+     ((compile_expr cond si env) @
+     [   ICmp(Reg(EAX), Const(0));
+         IJe(labelElse);   ] @
+     (compile_expr thn si env) @
+     [   IJmp(labelDone);
+         ILabel(labelElse);   ] @
+     (compile_expr els si env) @
+     [   ILabel(labelDone);   ])
+  | ELet(bindsLs, body, _) ->
+     let (instLs, newSi, newEnv) = List.fold_left
+     (fun (instLs, si, env) (bind) ->
+         let (id, exp, _) = bind in
+         let newInstLs = compile_expr exp si env in
+         let newEnv = [(id, si)]@env in
+         ((instLs @ newInstLs @ [ IMov(RegOffset(~-si, ESP), Reg(EAX)) ]), si+1, newEnv)
+     )
+     ([], si, env)
+     (bindsLs) in
+     (instLs @ compile_expr body newSi newEnv)
 and compile_imm e env =
   match e with
   | ENumber(n, _) -> Const(n)
@@ -174,7 +265,7 @@ our_code_starts_here:" in
 
 
 let compile_to_string prog =
-  check_scope prog;
+  (*check_scope prog;*)
   let tagged : tag expr = tag prog in
   let anfed : tag expr = tag (anf tagged) in
   (* printf "Prog:\n%s\n" (ast_of_expr prog); *)
