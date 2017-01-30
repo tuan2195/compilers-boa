@@ -123,7 +123,6 @@ let anf (e : tag expr) : unit expr =
             let (expAns, expCtx) = help exp in
             let name = gensym e in
             (EId(name, ()), bindsCtx@expCtx@[(name, expAns)])
-            (*(expAns, bindsCtx@expCtx)*)
         | EIf(cond, thn, els, _) ->
             let (ansCond, ctxCond) = help cond in
             let (ansThen, ctxThen) = help thn in
@@ -134,32 +133,7 @@ let anf (e : tag expr) : unit expr =
         then untag e
     else
         let (ans, ctx) = help e in
-        let binds = List.map(fun (str, expr) -> (str, expr, ())) ctx in
-        ELet(binds, ans, ())
-    (*else match e with*)
-        (*| EId(x, _) ->*)
-            (*EId(x, ())*)
-        (*| ENumber(x, _) ->*)
-            (*ENumber(x, ())*)
-        (*| EPrim1(op, e, _) ->*)
-            (*let (ans, ctx) = help e in*)
-            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) ctx in*)
-            (*ELet(binds, EPrim1(op, ans, ()), ())*)
-        (*| EPrim2(op, e1, e2, _) ->*)
-            (*let (ans1, ctx1) = help e1 in*)
-            (*let (ans2, ctx2) = help e2 in*)
-            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) (ctx1@ctx2) in*)
-            (*ELet(binds, EPrim2(op, ans1, ans2, ()), ())*)
-        (*| ELet(_, _, _) ->*)
-            (*let (ans, ctx) = help e in*)
-            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) ctx in*)
-            (*ELet(binds, ans, ())*)
-        (*| EIf(cond, thn, els, _) ->*)
-            (*let (ansCond, ctxCond) = help cond in*)
-            (*let (ansThen, ctxThen) = help thn in*)
-            (*let (ansElse, ctxElse) = help els in*)
-            (*let binds = List.map(fun (str, expr) -> (str, expr, ())) (ctxCond@ctxThen@ctxElse) in*)
-            (*ELet(binds, EIf(ansCond, ansThen, ansElse, ()), ())*)
+        ELet(List.map(fun (str, expr) -> (str, expr, ())) ctx, ans, ())
 ;;
 
 
@@ -178,7 +152,6 @@ let arg_to_asm (a : arg) : string =
        sprintf "[%s+%d]" (r_to_asm r) (word_size * n)
      else
        sprintf "[%s-%d]" (r_to_asm r) (-1 * word_size * n)
-
 let i_to_asm (i : instruction) : string =
   match i with
   | IMov(dest, value) ->
@@ -197,11 +170,11 @@ let i_to_asm (i : instruction) : string =
      sprintf "  jne %s" label
   | IJe(label) ->
      sprintf "  je %s" label
-  | IJe(label) ->
+  | IJmp(label) ->
      sprintf "  jmp %s" label
   | IRet ->
      "  ret"
-  | _ -> failwith "Implement this"
+  | _ -> failwith "Implement this instruction"
 
 let to_asm (is : instruction list) : string =
   List.fold_left (fun s i -> sprintf "%s\n%s" s (i_to_asm i)) "" is
@@ -223,22 +196,49 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
   | EPrim1(op, e, _) ->
      let e_reg = compile_imm e env in
      begin match op with
-     | Add1 -> [
-         IMov(Reg(EAX), e_reg);
-         IAdd(Reg(EAX), Const(1))
-       ]
-     | Sub1 -> [
-         IMov(Reg(EAX), e_reg);
-         IAdd(Reg(EAX), Const(~-1))
-       ]
+     | Add1 ->
+       [ IMov(Reg(EAX), e_reg);
+         IAdd(Reg(EAX), Const(1)) ]
+     | Sub1 ->
+       [ IMov(Reg(EAX), e_reg);
+         IAdd(Reg(EAX), Const(~-1)) ]
      end
   | EPrim2(op, left, right, _) ->
-     failwith "Implement this"
+     let regLeft = compile_imm left env in
+     let regRight = compile_imm right env in
+     begin match op with
+     | Plus ->
+       [ IMov(Reg(EAX), regLeft);
+         IAdd(Reg(EAX), regRight); ]
+     | Minus ->
+       [ IMov(Reg(EAX), regLeft);
+         ISub(Reg(EAX), regRight); ]
+     | Times ->
+       [ IMov(Reg(EAX), regLeft);
+         IMul(Reg(EAX), regRight); ]
+     end
   | EIf(cond, thn, els, tag) ->
-     failwith "Implement this"
-  | ELet([id, e, _], body, _) ->
-     failwith "Implement this"
-  | _ -> failwith "Impossible: Not in ANF"
+     let labelElse = sprintf "if_false_%d" tag in
+     let labelDone = sprintf "done_%d" tag in
+     ((compile_expr cond si env) @
+     [   ICmp(Reg(EAX), Const(0));
+         IJe(labelElse);   ] @
+     (compile_expr thn si env) @
+     [   IJmp(labelDone);
+         ILabel(labelElse);   ] @
+     (compile_expr els si env) @
+     [   ILabel(labelDone);   ])
+  | ELet(bindsLs, body, _) ->
+     let (instLs, newSi, newEnv) = List.fold_left
+     (fun (instLs, si, env) (bind) ->
+         let (id, exp, _) = bind in
+         let newInstLs = compile_expr exp si env in
+         let newEnv = [(id, si)]@env in
+         ((instLs @ newInstLs @ [ IMov(RegOffset(~-si, ESP), Reg(EAX)) ]), si+1, newEnv)
+     )
+     ([], si, env)
+     (bindsLs) in
+     (instLs @ compile_expr body newSi newEnv)
 and compile_imm e env =
   match e with
   | ENumber(n, _) -> Const(n)
@@ -257,7 +257,7 @@ our_code_starts_here:" in
 
 
 let compile_to_string prog =
-  check_scope prog;
+  (*check_scope prog;*)
   let tagged : tag expr = tag prog in
   let anfed : tag expr = tag (anf tagged) in
   (* printf "Prog:\n%s\n" (ast_of_expr prog); *)

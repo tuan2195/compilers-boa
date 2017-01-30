@@ -16,6 +16,9 @@ let te name program expected_err = name>::test_err program name expected_err;;
 let tanf name program expected = name>::fun _ ->
   assert_equal expected (anf (tag program)) ~printer:string_of_expr;;
 
+let tstr name program expected = name>::fun _ ->
+    assert_equal expected (compile_to_string program) ~printer:(fun s -> s);;
+
 let teq name actual expected = name>::fun _ ->
   assert_equal expected actual ~printer:(fun s -> s);;
 
@@ -31,11 +34,25 @@ let suite =
        (ENumber(41, ()))
        forty_one_a;
 
-  tanf "prim1_anf"
-       (EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))
-       (ELet(["unary_1", EPrim1(Sub1, ENumber(55, ()), ()), ()],
-             EId("unary_1", ()),
-             ()));
+  (*tanf "forty_one_anf"*)
+       (*(EPrim2(Times, ENumber(42,()), ENumber(24,()), ()))*)
+       (*forty_one_a;*)
+
+  (*tanf "prim1_anf"*)
+       (*(EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))*)
+       (*(ELet(["unary_1", EPrim1(Sub1, ENumber(55, ()), ()), ()],*)
+             (*EId("unary_1", ()),*)
+             (*()));*)
+
+  (*tstr "prim1_anf"*)
+       (*(EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))*)
+       (*("test");*)
+
+  tstr "if1"
+        (EIf(ENumber(55, ()),
+             EPrim2(Times, ENumber(12, ()), ENumber(24, ()), ()),
+             EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()), ()))
+        ("test");
 
   (*ta "forty_one_run_anf" (tag forty_one_a) "41";*)
 
