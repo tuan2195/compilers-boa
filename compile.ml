@@ -36,7 +36,6 @@ let tag (e : 'a expr) : tag expr =
                 let (str, bindsExp, _) = b in
                 let (newBindsExp, nextTag) = tagger bindsExp t in
                 let newBinds = (str, newBindsExp, nextTag) in
-                (* not so sure about this increment *)
                 let (newRestBindsLs, nextTagRec) = bindsTagger rest (nextTag+1) in
                 (newBinds::newRestBindsLs, nextTagRec)
         in match e with
@@ -106,8 +105,22 @@ let i_to_asm (i : instruction) : string =
   match i with
   | IMov(dest, value) ->
      sprintf "  mov %s, %s" (arg_to_asm dest) (arg_to_asm value)
-  | IAdd(dest, to_add) ->
-     sprintf "  add %s, %s" (arg_to_asm dest) (arg_to_asm to_add)
+  | IAdd(dest, arg) ->
+     sprintf "  add %s, %s" (arg_to_asm dest) (arg_to_asm arg)
+  | ISub(dest, arg) ->
+     sprintf "  sub %s, %s" (arg_to_asm dest) (arg_to_asm arg)
+  | IMul(dest, arg) ->
+     sprintf "  mul %s, %s" (arg_to_asm dest) (arg_to_asm arg)
+  | ILabel(label) ->
+     sprintf "%s:" label
+  | ICmp(arg1, arg2) ->
+     sprintf "  cmp %s, %s" (arg_to_asm arg1) (arg_to_asm arg2)
+  | IJne(label) ->
+     sprintf "  jne %s" label
+  | IJe(label) ->
+     sprintf "  je %s" label
+  | IJe(label) ->
+     sprintf "  jmp %s" label
   | IRet ->
      "  ret"
   | _ -> failwith "Implement this"
