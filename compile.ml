@@ -18,11 +18,19 @@ and is_imm e =
   | _ -> false
 ;;
 
-(* PROBLEM 1 *)
 (* This function should encapsulate the binding-error checking from Adder *)
 exception BindingError of string
 let rec check_scope (e : (Lexing.position * Lexing.position) expr) : unit =
-  failwith "Implement this"
+  let rec helper (e : 'a expr) (bound : string list) : unit =
+    match e with 
+    | ENumber _ -> ()
+    | EId (s, _) -> if List.mem s bound then () else failwith "Unbound var"
+    | EPrim1 (_, e, _) -> helper e bound
+    | EPrim2 (_, e1, e2, _) -> helper e1 bound ; helper e2 bound
+    | EIf (cond, thn, els, _) -> helper cond bound ; helper thn bound ; helper els bound
+    | ELet (binds, body, _) -> 
+        List.fold_left (fun (x, e, _) -> helper e bound ; x::bound) [] binds ; helper body newbinds
+  in helper e []
 
 type tag = int
 (* PROBLEM 2 *)
