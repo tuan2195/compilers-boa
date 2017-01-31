@@ -113,6 +113,7 @@ let gensym (e : tag expr) : string =
         sprintf "If_%d" t
 
 let anf (e : tag expr) : unit expr =
+    let addUnit = (fun (str, expr) -> (str, expr, ())) in
     let rec help (e : tag expr) : (unit expr * (string * unit expr) list) =
         let rec helpBinds (ls : 'a bind list) : ((string * unit expr) list) =
             match ls with
@@ -145,13 +146,20 @@ let anf (e : tag expr) : unit expr =
             let (ansCond, ctxCond) = help cond in
             let (ansThen, ctxThen) = help thn in
             let (ansElse, ctxElse) = help els in
-            let name = gensym e in
-            (EId(name, ()), ctxCond@ctxThen@ctxElse@[(name, EIf(ansCond, ansThen, ansElse, ()))])
+            (EIf(ELet(List.map addUnit ctxCond, ansCond, ()),
+                 ELet(List.map addUnit ctxThen, ansThen, ()),
+                 ELet(List.map addUnit ctxElse, ansElse, ()),
+                 ()), [])
+            (*(EId(name, ()),*)
+             (*[(name, EIf(ELet(List.map addUnit ctxCond, ansCond, ()),*)
+                         (*ELet(List.map addUnit ctxThen, ansThen, ()),*)
+                         (*ELet(List.map addUnit ctxElse, ansElse, ()),*)
+                         (*()))])*)
     in if is_anf e
         then untag e
     else
         let (ans, ctx) = help e in
-        ELet(List.map(fun (str, expr) -> (str, expr, ())) ctx, ans, ())
+        ELet(List.map addUnit ctx, ans, ())
 ;;
 
 
@@ -274,7 +282,7 @@ our_code_starts_here:" in
 
 
 let compile_to_string prog =
-  check_scope prog;
+  (*check_scope prog;*)
   let tagged : tag expr = tag prog in
   let anfed : tag expr = tag (anf tagged) in
   (* printf "Prog:\n%s\n" (ast_of_expr prog); *)

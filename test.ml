@@ -48,11 +48,11 @@ let suite =
        (*(EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))*)
        (*("test");*)
 
-  (*tstr "if1"*)
-        (*(EIf(ENumber(55, ()),*)
-             (*EPrim2(Times, ENumber(12, ()), ENumber(24, ()), ()),*)
-             (*EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()), ()))*)
-        (*("test");*)
+  tstr "if1"
+        (EIf(ENumber(55, ()),
+             EPrim2(Times, ENumber(12, ()), ENumber(24, ()), ()),
+             EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()), ()))
+        ("test");
 
   (*ta "forty_one_run_anf" (tag forty_one_a) "41";*)
 
@@ -63,8 +63,8 @@ let suite =
 
     (*(* Some useful if tests to start you off *)*)
 
-  t "if1" "if 5: 4 else: 2" "4";
-  t "if2" "if 0: 4 else: 2" "2";
+  (*t "if1" "if 5: 4 else: 2" "4";*)
+  (*t "if2" "if 0: 4 else: 2" "2";*)
 
   ]
 ;;
