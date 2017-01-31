@@ -38,11 +38,13 @@ let suite =
        (*(EPrim2(Times, ENumber(42,()), ENumber(24,()), ()))*)
        (*forty_one_a;*)
 
-  (*tanf "prim1_anf"*)
-       (*(EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))*)
-       (*(ELet(["unary_1", EPrim1(Sub1, ENumber(55, ()), ()), ()],*)
-             (*EId("unary_1", ()),*)
-             (*()));*)
+  tanf "prim1_anf"
+        (EIf(ENumber(55, ()),
+             EPrim2(Times, ENumber(12, ()), ENumber(24, ()), ()),
+             EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()), ()))
+       (ELet(["unary_1", EPrim1(Sub1, ENumber(55, ()), ()), ()],
+             EId("unary_1", ()),
+             ()));
 
   (*tstr "prim1_anf"*)
        (*(EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))*)

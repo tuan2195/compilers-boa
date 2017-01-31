@@ -114,51 +114,69 @@ let gensym (e : tag expr) : string =
 
 let anf (e : tag expr) : unit expr =
     let addUnit = (fun (str, expr) -> (str, expr, ())) in
-    let rec help (e : tag expr) : (unit expr * (string * unit expr) list) =
-        let rec helpBinds (ls : 'a bind list) : ((string * unit expr) list) =
-            match ls with
-            | [] -> []
-            | bind::rest ->
-                let (_, exp, tag) = bind in
-                let (ans, ctx) = help exp in
-                let name = gensym exp in
-                ((name, ans)::ctx)@helpBinds rest
-        in match e with
+    let rec helpBinds (ls : 'a bind list) : ((string * unit expr) list) =
+        match ls with
+        | [] -> []
+        | bind::rest ->
+            let (_, exp, tag) = bind in
+            let (ans, ctx) = helpC exp in
+            let name = gensym exp in
+            ((name, ans)::ctx)@helpBinds rest
+    and helpC (e : tag expr) : (unit expr * (string * unit expr) list) =
+        match e with
+        | EPrim1(op, e, _) ->
+            let (ans, ctx) = helpI e in
+            (EPrim1(op, ans, ()), ctx)
+        | EPrim2(op, e1, e2, _) ->
+            let (ans1, ctx1) = helpI e1 in
+            let (ans2, ctx2) = helpI e2 in
+            (EPrim2(op, ans1, ans2, ()), ctx1@ctx2)
+        | ELet(binds, exp, _) ->
+            let bindsCtx = helpBinds binds in
+            let (expAns, expCtx) = helpC exp in
+            (ELet(List.map addUnit expCtx, expAns, ()), bindsCtx)
+        | EIf(cond, thn, els, _) ->
+            let (ansCond, ctxCond) = helpI cond in
+            let (ansThen, ctxThen) = helpC thn in
+            let (ansElse, ctxElse) = helpC els in
+            (EIf(ELet(List.map addUnit ctxCond, ansCond, ()),
+                 ELet(List.map addUnit ctxThen, ansThen, ()),
+                 ELet(List.map addUnit ctxElse, ansElse, ()),
+                 ()), [])
+        | _ -> helpI e
+    and helpI (e : tag expr) : (unit expr * (string * unit expr) list) =
+        match e with
         | EId(x, _) ->
             (EId(x, ()), [])
         | ENumber(x, _) ->
             (ENumber(x, ()), [])
         | EPrim1(op, e, _) ->
-            let (ans, ctx) = help e in
+            let (ans, ctx) = helpI e in
             let name = gensym e in
             (EId(name, ()), ctx@[(name, EPrim1(op, ans, ()))])
         | EPrim2(op, e1, e2, _) ->
-            let (ans1, ctx1) = help e1 in
-            let (ans2, ctx2) = help e2 in
+            let (ans1, ctx1) = helpI e1 in
+            let (ans2, ctx2) = helpI e2 in
             let name = gensym e in
             (EId(name, ()), ctx1@ctx2@[(name, EPrim2(op, ans1, ans2, ()))])
         | ELet(binds, exp, _) ->
             let bindsCtx = helpBinds binds in
-            let (expAns, expCtx) = help exp in
+            let (expAns, expCtx) = helpC exp in
             let name = gensym e in
             (EId(name, ()), bindsCtx@expCtx@[(name, expAns)])
         | EIf(cond, thn, els, _) ->
-            let (ansCond, ctxCond) = help cond in
-            let (ansThen, ctxThen) = help thn in
-            let (ansElse, ctxElse) = help els in
-            (EIf(ELet(List.map addUnit ctxCond, ansCond, ()),
-                 ELet(List.map addUnit ctxThen, ansThen, ()),
-                 ELet(List.map addUnit ctxElse, ansElse, ()),
-                 ()), [])
-            (*(EId(name, ()),*)
-             (*[(name, EIf(ELet(List.map addUnit ctxCond, ansCond, ()),*)
-                         (*ELet(List.map addUnit ctxThen, ansThen, ()),*)
-                         (*ELet(List.map addUnit ctxElse, ansElse, ()),*)
-                         (*()))])*)
+            let (ansCond, ctxCond) = helpI cond in
+            let (ansThen, ctxThen) = helpC thn in
+            let (ansElse, ctxElse) = helpC els in
+            let name = gensym e in
+            (EId(name, ()), [(name, EIf( ELet(List.map addUnit ctxCond, ansCond, ()),
+                                         ELet(List.map addUnit ctxThen, ansThen, ()),
+                                         ELet(List.map addUnit ctxElse, ansElse, ()),
+                                         ()))])
     in if is_anf e
         then untag e
     else
-        let (ans, ctx) = help e in
+        let (ans, ctx) = helpC e in
         ELet(List.map addUnit ctx, ans, ())
 ;;
 
@@ -214,6 +232,15 @@ let rec find ls x =
 (* This function actually compiles the tagged ANF expression into assembly *)
 (* The si parameter should be used to indicate the next available stack index for use by Lets *)
 (* The env parameter associates identifier names to stack indices *)
+let rec optimize (ls : instruction list) =
+    match ls with
+    | [] -> []
+    | (IMov(RegOffset(o1, ESP), Reg(EAX)))::(IMov(Reg(EAX), RegOffset(o2, ESP)))::rest ->
+        if o1 = o2 then optimize rest
+        else (List.nth ls 0)::(List.nth ls 1)::optimize rest
+    | what::rest ->
+        what::optimize rest
+
 let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : instruction list =
   match e with
   | ENumber(n, _) -> [ IMov(Reg(EAX), compile_imm e env) ]
@@ -277,6 +304,7 @@ let compile_anf_to_string anfed =
 global our_code_starts_here
 our_code_starts_here:" in
   let compiled = (compile_expr anfed 1 []) in
+  let compiled = optimize compiled in
   let as_assembly_string = (to_asm (compiled @ [IRet])) in
   sprintf "%s%s\n" prelude as_assembly_string
 
