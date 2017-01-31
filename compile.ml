@@ -24,17 +24,22 @@ let rec check_scope (e : (Lexing.position * Lexing.position) expr) : unit =
   let rec helper (e : 'a expr) (bound : string list) : unit =
     match e with
     | ENumber _ -> ()
-    | EId (s, _) -> if List.mem s bound then () else failwith "Unbound var"
-    | EPrim1 (_, e, _) -> helper e bound
-    | EPrim2 (_, e1, e2, _) -> helper e1 bound ; helper e2 bound
-    | EIf (cond, thn, els, _) -> helper cond bound ; helper thn bound ; helper els bound
+    | EId (s, pos) ->
+        if List.mem s bound then ()
+        else raise (BindingError(sprintf "Unbound var %s at %s" s (string_of_pos pos)))
+    | EPrim1 (_, e, _) ->
+        helper e bound
+    | EPrim2 (_, e1, e2, _) ->
+        helper e1 bound ;
+        helper e2 bound
+    | EIf (cond, thn, els, _) ->
+        helper cond bound ;
+        helper thn bound ;
+        helper els bound
     | ELet (binds, body, _) ->
-        (*List.fold_left (fun (x, e, _) -> helper e bound ; x::bound) [] binds ; helper body newbinds*)
-        let newLs = List.fold_left
-        (fun ls (str, exp, _) -> helper exp ls; str::ls)
-        bound
-        binds
-        in helper body newLs
+        let newBound = List.fold_left
+            (fun ls (str, exp, _) -> helper exp ls; str::ls) bound binds
+        in helper body newBound
   in helper e []
 
 type tag = int
@@ -269,7 +274,7 @@ our_code_starts_here:" in
 
 
 let compile_to_string prog =
-  (*check_scope prog;*)
+  check_scope prog;
   let tagged : tag expr = tag prog in
   let anfed : tag expr = tag (anf tagged) in
   (* printf "Prog:\n%s\n" (ast_of_expr prog); *)
