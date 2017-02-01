@@ -66,6 +66,10 @@ let suite =
   t "if1" "if 5: 4 else: 2" "4";
   t "if2" "if 0: 4 else: 2" "2";
 
+  t "if3" "let x = 5 in if x: 4 else: 5" "4";
+  t "if4" "let x = 0 in if x: 4 else: 5" "5";
+  t "if5" "let a = let x = 5, y = 16 in x + y in if a: 5 else: 0" "5";
+
   t "m1" "5 - 5" "0";
   t "m2" "5 + 5" "10";
   t "m3" "let x = 5 in x" "5";
@@ -78,8 +82,9 @@ let suite =
   t "m9" "let x = 5, y = 6 in let z = let a = x + y in a in z" "11";
 
   t "m10" "5 - 5" "0";
+  t "m11" "let x = 5 in 5 * x" "25";
   
-  te "unbound" "if 1: x else: 2" "Unbound var x at unbound, 1:6-1:7";
+  (*te "unbound" "if 1: x else: 2" "Unbound var x at unbound, 1:6-1:7";*)
 
   ]
 ;;
