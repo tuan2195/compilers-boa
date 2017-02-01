@@ -31,46 +31,14 @@ let suite =
 "suite">:::
  [
 
-  tanf "forty_one_anf"
-       (ENumber(41, ()))
-       forty_one_a;
-
-  (*tanf "forty_one_anf"*)
-       (*(EPrim2(Times, ENumber(42,()), ENumber(24,()), ()))*)
-       (*forty_one_a;*)
-
-
-  (*tanf "prim1_anf"
-       (EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))
-       (ELet(["unary_1", EPrim1(Sub1, ENumber(55, ()), ()), ()],
-             EId("unary_1", ()),
-             ()));*)
-
-  (*tstr "prim1_anf"*)
-       (*(EPrim1(Sub1, EPrim1(Add1, ENumber(77,()), ()), ()))*)
-       (*("test");*)
-
-  (*tstr "if1"*)
-        (*(EIf(ENumber(55, pos),*)
-             (*EPrim2(Times, ENumber(12, pos), ENumber(24, pos), pos),*)
-             (*EPrim1(Sub1, EPrim1(Add1, ENumber(77,pos), pos), pos), pos))*)
-        (*("test");*)
-
-  (*ta "forty_one_run_anf" (tag forty_one_a) "41";*)
-
-  (*t "forty_one" forty_one "41";*)
-  (*t "test" test_prog "3";*)
-
-    (*(* Some useful if tests to start you off *)*)
-
   t "if1" "if 5: 4 else: 2" "4";
   t "if2" "if 0: 4 else: 2" "2";
-
   t "if3" "let x = 5 in if x: 4 else: 5" "4";
   t "if4" "let x = 0 in if x: 4 else: 5" "5";
   t "if5" "let a = let x = 5, y = 16 in x + y in if a: 5 else: 0" "5";
   t "if6" "let a = let x = 5, y = 0 in x * y in if a: 5 else: 0" "0";
   t "if7" "let a = let x = 5, y = 1 in x * y in if a: 5 else: 0" "5";
+  t "if8" "let a = let x = 6, y = 2 in x + y in if a: 9 else: 5" "9";
 
   t "m1" "5 - 5" "0";
   t "m2" "5 + 5" "10";
@@ -86,13 +54,10 @@ let suite =
   t "m11" "let x = 5 in let y = 5 + x in y" "10";
   t "m12" "let x = 5, y = 6 in let z = x + y in z" "11";
   t "m13" "let x = 5, y = 6 in let z = let a = x + y in a in z" "11";
-  
+
   t "m14" "let x = 5 in 5 * x" "25";
   t "m15" "let x = 5, y = 6 in x * y" "30";
   t "m16" "let x = 5, y = 6 in let z = let a = x * y in a in z" "30";
-
-  
-  (*te "unbound" "if 1: x else: 2" "Unbound var x at unbound, 1:6-1:7";*)
 
   ]
 ;;

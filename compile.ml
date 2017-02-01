@@ -307,6 +307,7 @@ our_code_starts_here:" in
   let compiled = optimize compiled in
   let compiled = optimize compiled in
   let as_assembly_string = (to_asm (compiled @ [IRet])) in
+  (*printf "%s" as_assembly_string;*)
   sprintf "%s%s\n" prelude as_assembly_string
 
 
