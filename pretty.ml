@@ -54,7 +54,7 @@ let format_expr (e : 'a expr) (print_a : 'a -> string) : string =
     | [item] -> p_item fmt item
     | first::rest ->
        p_item fmt first;
-       List.iter (fun item -> p_sep fmt; p_item fmt item) items in
+       List.iter (fun item -> p_sep fmt; p_item fmt item) rest in
   let print_comma_sep fmt =
     pp_print_string fmt ","; pp_print_space fmt () in
   let open_label fmt label a =

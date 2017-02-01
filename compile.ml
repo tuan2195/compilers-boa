@@ -305,12 +305,13 @@ global our_code_starts_here
 our_code_starts_here:" in
   let compiled = (compile_expr anfed 1 []) in
   let compiled = optimize compiled in
+  let compiled = optimize compiled in
   let as_assembly_string = (to_asm (compiled @ [IRet])) in
   sprintf "%s%s\n" prelude as_assembly_string
 
 
 let compile_to_string prog =
-  (*check_scope prog;*)
+  check_scope prog;
   let tagged : tag expr = tag prog in
   let anfed : tag expr = tag (anf tagged) in
   (* printf "Prog:\n%s\n" (ast_of_expr prog); *)
