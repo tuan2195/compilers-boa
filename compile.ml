@@ -232,15 +232,6 @@ let rec find ls x =
 (* This function actually compiles the tagged ANF expression into assembly *)
 (* The si parameter should be used to indicate the next available stack index for use by Lets *)
 (* The env parameter associates identifier names to stack indices *)
-let rec optimize (ls : instruction list) =
-    match ls with
-    | [] -> []
-    | (IMov(RegOffset(o1, ESP), Reg(EAX)))::(IMov(Reg(EAX), RegOffset(o2, ESP)))::rest ->
-        if o1 = o2 then optimize rest
-        else (List.nth ls 0)::(List.nth ls 1)::optimize rest
-    | what::rest ->
-        what::optimize rest
-
 let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : instruction list =
   match e with
   | ENumber(n, _) -> [ IMov(Reg(EAX), compile_imm e env) ]
@@ -298,13 +289,22 @@ and compile_imm e env =
   | _ -> failwith "Impossible: not an immediate"
 
 
+(* Remove duplicate memory to register mov instructions *)
+let rec optimize (ls : instruction list) =
+    match ls with
+    | [] -> []
+    | (IMov(RegOffset(o1, ESP), Reg(EAX)))::(IMov(Reg(EAX), RegOffset(o2, ESP)))::rest ->
+        if o1 = o2 then optimize rest
+        else (List.nth ls 0)::(List.nth ls 1)::optimize rest
+    | what::rest ->
+        what::optimize rest
+
 let compile_anf_to_string anfed =
   let prelude =
     "section .text
 global our_code_starts_here
 our_code_starts_here:" in
   let compiled = (compile_expr anfed 1 []) in
-  let compiled = optimize compiled in
   let compiled = optimize compiled in
   let as_assembly_string = (to_asm (compiled @ [IRet])) in
   (*printf "%s" as_assembly_string;*)

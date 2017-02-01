@@ -31,15 +31,6 @@ let suite =
 "suite">:::
  [
 
-  t "if1" "if 5: 4 else: 2" "4";
-  t "if2" "if 0: 4 else: 2" "2";
-  t "if3" "let x = 5 in if x: 4 else: 5" "4";
-  t "if4" "let x = 0 in if x: 4 else: 5" "5";
-  t "if5" "let a = let x = 5, y = 16 in x + y in if a: 5 else: 0" "5";
-  t "if6" "let a = let x = 5, y = 0 in x * y in if a: 5 else: 0" "0";
-  t "if7" "let a = let x = 5, y = 1 in x * y in if a: 5 else: 0" "5";
-  t "if8" "let a = let x = 6, y = 2 in x + y in if a: 9 else: 5" "9";
-
   t "m1" "5 - 5" "0";
   t "m2" "5 + 5" "10";
   t "m3" "5 * 5" "25";
@@ -58,6 +49,19 @@ let suite =
   t "m14" "let x = 5 in 5 * x" "25";
   t "m15" "let x = 5, y = 6 in x * y" "30";
   t "m16" "let x = 5, y = 6 in let z = let a = x * y in a in z" "30";
+
+  t "if1" "if 5: 4 else: 2" "4";
+  t "if2" "if 0: 4 else: 2" "2";
+  t "if3" "let x = 5 in if x: 4 else: 5" "4";
+  t "if4" "let x = 0 in if x: 4 else: 5" "5";
+  t "if5" "let a = let x = 5, y = 16 in x + y in if a: 5 else: 0" "5";
+  t "if6" "let a = let x = 5, y = 0 in x * y in if a: 5 else: 0" "0";
+  t "if7" "let a = let x = 5, y = 1 in x * y in if a: 5 else: 0" "5";
+  t "if8" "let a = let x = 6, y = 2 in x + y in
+               if a: let x = 5, y = 6 in let z = let a = x + y in a in z
+               else: let a = let x = 5, y = 1 in x * y in
+                    if a: let x = 11 + 1 in x * 12
+                    else: let  x = 6, y = 7 in x * y" "11";
 
   ]
 ;;
